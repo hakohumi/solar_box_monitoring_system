@@ -23,8 +23,8 @@
 
 // もし、I2Cのポートを変更する場合は、wire2関数あたりで設定する必要あり
 // I2C用のポート
-// const uint8_t I2C_SDA = 25;
-// const uint8_t I2C_SCL = 26;
+const uint8_t I2C_PORT_SDA = 4;
+const uint8_t I2C_PORT_SCL = 5;
 
 #define SERIAL_BAUD 115200     // Serial 通信レート
 #define BME280_ADDRESS 0x76    // BME280 スレーブアドレス
@@ -73,6 +73,10 @@ void setup() {
     delay(10);
 
     Serial.println("Wake up now");
+
+    // I2Cの設定
+    Wire.begin(I2C_PORT_SDA, I2C_PORT_SCL);
+    voltCurrMeter.setWire(&Wire);
 
     // BME280 setup
     while (!bme280.begin()) {
