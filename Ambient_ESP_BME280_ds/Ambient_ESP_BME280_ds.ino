@@ -240,8 +240,8 @@ void setup() {
     String str_average_ma1 = String(average_ma1);
 
     Serial.println();  // 改行
-    Serial.println("1番目のINA226の平均値 :")
-        Serial.print("電圧 :" + str_average_mv1 + " ");
+    Serial.println("1番目のINA226の平均値 :");
+    Serial.print("電圧 :" + str_average_mv1 + " ");
     Serial.println("電流 :" + str_average_ma1);
 
     float average_mv2 = 0.0f;
