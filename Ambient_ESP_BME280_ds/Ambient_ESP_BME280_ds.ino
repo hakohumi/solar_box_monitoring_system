@@ -225,9 +225,10 @@ void setup() {
     String str_average_pres = String(average_pres);
 
     Serial.println();  // 改行
-    Serial.print("平均後の温度 :" + str_average_temp + " ");
-    Serial.print("平均後の湿度 :" + str_average_hum + " ");
-    Serial.println("平均後の気圧 :" + str_average_pres);
+    Serial.println("BME280 平均値");
+    Serial.print("温度 :" + str_average_temp + " ");
+    Serial.print("湿度 :" + str_average_hum + " ");
+    Serial.println("気圧 :" + str_average_pres);
 
     float average_mv1 = 0.0f;
     float average_ma1 = 0.0f;
