@@ -34,7 +34,7 @@ const uint8_t I2C_PORT_SCL = 5;
 // センサからデータを取得して、データをambientに送信する間隔 単位は[s]
 // 1時間 = 60分 * 60秒 = 3600秒
 //#define SEND_DATA_AMBIENT_INTERVAL_SEC 3600
-#define SEND_DATA_AMBIENT_INTERVAL_SEC 3
+#define SEND_DATA_AMBIENT_INTERVAL_SEC 30
 
 // 平均化のために取得するデータの個数
 #define SENSING_DATA_COUNT 3
@@ -134,10 +134,13 @@ void setup() {
     float temp_total = 0.0f, hum_total = 0.0f, pres_total = 0.0f;  // 平均するようの変数
     uint8_t BME280_read_count = 0;
 
-    int16_t ma1_total, mv1_total;             // ina226_1 の平均値合計用の変数
-    int16_t ma2_total, mv2_total, mw2_total;  // ina226_2 の平均値合計用の変数
+    int16_t ma1_total = 0, mv1_total = 0;                 // ina226_1 の平均値合計用の変数
+    int16_t ma2_total = 0, mv2_total = 0, mw2_total = 0;  // ina226_2 の平均値合計用の変数
     uint8_t INA226_1_read_count = 0;
     uint8_t INA226_2_read_count = 0;
+
+    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);  // 温度の単位設定
+    BME280::PresUnit presUnit(BME280::PresUnit_hPa);      // 気圧の単位設定
 
     // ----------------------------------------
     // 3回データを1秒間隔で取得する
@@ -148,9 +151,6 @@ void setup() {
 
         Serial.println();  // 改行
         Serial.println("平均のための" + String(c + 1) + "回目のデータ取得");
-
-        BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);  // 温度の単位設定
-        BME280::PresUnit presUnit(BME280::PresUnit_Pa);       // 気圧の単位設定
 
         // データ取得
         bme280.read(pres, temp, hum, tempUnit, presUnit);
@@ -171,9 +171,10 @@ void setup() {
         // INA226 からデータを取得する
         // センサからの値を格納する変数
         // 多分、電流（mA）、電圧（mV）、電力（mW）
-        int16_t ma1, mv1;       // センサ1 用
-        int16_t ma2, mv2, mw2;  // センサ2 用
+        int16_t mv1 = 0, ma1 = 0;           // センサ1 用
+        int16_t mv2 = 0, ma2 = 0, mw2 = 0;  // センサ2 用
 
+        Serial.println("INA226 1番目 : ");
         // 電圧・電流を取得する
         // 取得できたら、mvの変数に格納される
         // 取得できなかったら、0が返ってくる（mvの変数の値は変わらず）
@@ -188,10 +189,11 @@ void setup() {
             Serial.println("1番目のINA226センサの読み取りができませんでした。");
         }
 
+        Serial.println("INA226 2番目 : ");
         // 電圧・電流・電力を取得する
         // 取得できたら、mvの変数に格納される
         // 取得できなかったら、0が返ってくる（mvの変数の値は変わらず）
-        if ((voltCurrMeter_2.readMV(&mv2) + voltCurrMeter_2.readMA(&ma2) + voltCurrMeter_2.readMW(&mv2)) == 0) {
+        if ((voltCurrMeter_2.readMV(&mv2) + voltCurrMeter_2.readMA(&ma2) + voltCurrMeter_2.readMW(&mw2)) == 0) {
             Serial.println(String(mv2) + "mV");
             Serial.println(String(ma2) + "mA");
             Serial.println(String(mw2) + "mW");
@@ -211,50 +213,72 @@ void setup() {
     float average_temp = 0.0f;
     float average_hum  = 0.0f;
     float average_pres = 0.0f;
+    float average_mv1  = 0.0f;
+    float average_ma1  = 0.0f;
+    float average_mv2  = 0.0f;
+    float average_ma2  = 0.0f;
+    float average_mw2  = 0.0f;
 
     if (BME280_read_count != 0) {
         average_temp = temp_total / (float)BME280_read_count;
         average_hum  = hum_total / (float)BME280_read_count;
         average_pres = pres_total / (float)BME280_read_count;
     }
+
+    if (INA226_1_read_count != 0) {
+        average_mv1 = (float)mv1_total / INA226_1_read_count;
+        average_ma1 = (float)ma1_total / INA226_1_read_count;
+    }
+
+    if (INA226_2_read_count != 0) {
+        average_mv2 = (float)mv2_total / INA226_2_read_count;
+        average_ma2 = (float)ma2_total / INA226_2_read_count;
+        average_mw2 = (float)mw2_total / INA226_2_read_count;
+    }
+
     String str_average_temp = String(average_temp);
     String str_average_hum  = String(average_hum);
     String str_average_pres = String(average_pres);
 
+    String str_average_mv1 = String(average_mv1);
+    String str_average_ma1 = String(average_ma1);
+
+    String str_average_mv2 = String(average_mv2);
+    String str_average_ma2 = String(average_ma2);
+    String str_average_mw2 = String(average_mw2);
+
     Serial.println();  // 改行
-    Serial.print("平均後の温度 :" + str_average_temp + " ");
-    Serial.print("平均後の湿度 :" + str_average_hum + " ");
-    Serial.println("平均後の気圧 :" + str_average_pres);
+    Serial.println("BME280 平均値");
+    Serial.print("温度 :" + str_average_temp + " ");
+    Serial.print("湿度 :" + str_average_hum + " ");
+    Serial.println("気圧 :" + str_average_pres);
 
-    float average_mv1 = 0.0f;
-    float average_ma1 = 0.0f;
-    if (INA226_1_read_count != 0) {
-        average_mv1 = (float)mv1_total / (float)INA226_1_read_count;
-        average_ma1 = (float)ma1_total / (float)INA226_1_read_count;
-    }
+    Serial.println();  // 改行
+    Serial.println("1番目のINA226の平均値 :");
+    Serial.print("電圧 :" + str_average_mv1 + " ");
+    Serial.println("電流 :" + str_average_ma1);
 
-    float average_mv2 = 0.0f;
-    float average_ma2 = 0.0f;
-    float average_mw2 = 0.0f;
-    if (INA226_2_read_count != 0) {
-        average_mv2 = (float)mv2_total / (float)INA226_2_read_count;
-        average_ma2 = (float)ma2_total / (float)INA226_2_read_count;
-        average_mw2 = (float)mw2_total / (float)INA226_2_read_count;
-    }
+    Serial.println();  // 改行
+    Serial.println("2番目のINA226の平均値 :");
+    Serial.print("電圧 :" + str_average_mv2 + " ");
+    Serial.print("電流 :" + str_average_ma2 + " ");
+    Serial.println("電力 :" + str_average_mw2);
 
-    // ambient.begin(channelId, writeKey, &client);  // チャネルIDとライトキーを指定してAmbientの初期化
+    // --------------------------------------------
 
-    // ambient.set(1, average_temp);  // 温度をデータ1にセット
-    // ambient.set(2, average_hum);   // 湿度をデータ2にセット
-    // ambient.set(3, average_pres);  // 気圧をデータ3にセット
+    ambient.begin(channelId, writeKey, &client);  // チャネルIDとライトキーを指定してAmbientの初期化
 
-    // ambient.set(4, average_mv1);  // センサ1の電圧をデータ4にセット
-    // ambient.set(5, average_ma1);  // センサ1の電流をデータ5にセット
-    // ambient.set(6, average_mv2);  // センサ2の電圧をデータ6にセット
-    // ambient.set(7, average_ma2);  // センサ2の電流をデータ7にセット
-    // ambient.set(8, average_mw2);  // センサ2の電力をデータ8にセット
+    ambient.set(1, average_temp);  // 温度をデータ1にセット
+    ambient.set(2, average_hum);   // 湿度をデータ2にセット
+    ambient.set(3, average_pres);  // 気圧をデータ3にセット
 
-    // ambient.send();  // データをAmbientに送信
+    ambient.set(4, average_mv1);  // センサ1の電圧をデータ4にセット
+    ambient.set(5, average_ma1);  // センサ1の電流をデータ5にセット
+    ambient.set(6, average_mv2);  // センサ2の電圧をデータ6にセット
+    ambient.set(7, average_ma2);  // センサ2の電流をデータ7にセット
+    ambient.set(8, average_mw2);  // センサ2の電力をデータ8にセット
+
+    ambient.send();  // データをAmbientに送信
 
     // --------------------------------------------
 
