@@ -30,6 +30,7 @@ const uint8_t I2C_PORT_SCL = 5;
 #define BME280_ADDRESS 0x76    // BME280 スレーブアドレス
 #define INA226_1_ADDRESS 0x40  // ソーラー側INA226 スレーブアドレス
 #define INA226_2_ADDRESS 0x41  // バッテリー側INA226 スレーブアドレス
+#define LCD_ADDR 0x3e          // LCD スレーブアドレス
 
 // センサからデータを取得して、データをambientに送信する間隔 単位は[s]
 // 1時間 = 60分 * 60秒 = 3600秒
@@ -66,6 +67,75 @@ const char *password = "...password...";
 unsigned int channelId = 100;               // AmbientのチャネルID
 const char *writeKey   = "...writeKey...";  // ライトキー
 
+void LCDinit() {
+    //  wait for VDD gets stable
+    delay(40);
+    //  Function set 0x39=B00111001 (extension-mode)
+    LCDsendInst(0x39);
+    //  Internal OSC 0x14=B00010100 (BS=0, FR=4)
+    LCDsendInst(0x14);
+    //  Contrast set 0x72=B01110010 (level=2)
+    LCDsendInst(0x72);
+    //  Power etc    0x56=B01010110 (Boost, const=B10)
+    LCDsendInst(0x56);
+    //  Follower     0x6c=B01101100 (on, amp=B100)
+    LCDsendInst(0x6c);
+    //  Function set 0x38=B00111001 (normal-mode)
+    LCDsendInst(0x38);
+    //  clear display
+    LCDsendInst(0x01);
+    //  display on   0x0c=B00001100 (On, no-cursor, no-blink)
+    LCDsendInst(0x0c);
+}
+
+void LCDsendInst(byte inst) {
+    //  instruction write = {LCD_ADDR, 0x00, inst}
+    Wire.beginTransmission(LCD_ADDR);
+    Wire.write(0x00);
+    Wire.write(inst);
+    Wire.endTransmission();
+    //  delay (1.08ms max)
+    delay(2);
+}
+
+void LCDsendData(byte data) {
+    //  data write = {LCD_ADDR, 0x40, data}
+    Wire.beginTransmission(LCD_ADDR);
+    Wire.write(0x40);
+    Wire.write(data);
+    Wire.endTransmission();
+    //  delay (may be omitted)
+    delay(1);
+}
+
+//  描画関数
+void LCDclear() {
+    //  画面クリア
+    LCDsendInst(0x01);
+}
+
+void LCDlocate(int x, int y) {
+    //  カーソルを x 行 y 字目に移動
+    if (y == 0) {
+        LCDsendInst(0x80 + x);
+    } else {
+        LCDsendInst(0xc0 + x);
+    }
+}
+
+void LCDprint(char *str) {
+    //  カーソル位置に文字列を表示（表示後にカーソルは移動）
+    for (int i = 0; i < strlen(str); i++) {
+        LCDsendData(str[i]);
+    }
+}
+
+void LCDprintXY(int x, int y, char *str) {
+    //  カーソルを (x, y) に移動して文字列を表示（表示後にカーソルは移動）
+    LCDlocate(x, y);
+    LCDprint(str);
+}
+
 void setup() {
     int t = millis();
     //    wifi_set_sleep_type(LIGHT_SLEEP_T);
@@ -80,7 +150,6 @@ void setup() {
 
     // I2Cの設定
     Wire.begin(I2C_PORT_SDA, I2C_PORT_SCL);
-    //    voltCurrMeter.setWire(&Wire);
 
     // BME280 setup
     while (!bme280.begin()) {
@@ -99,6 +168,10 @@ void setup() {
             Serial.println("BME280 センサーの接続を確認できませんでした。エラー");
     }
 
+    LCDinit();   // LCD初期化
+    LCDclear();  // 画面初期化
+    LCDprintXY(0, 0, "Hello, world!");
+
     // ----------------------------------------
 
     //    WiFi.begin(ssid, password);              //  Wi-Fi APに接続
@@ -106,7 +179,7 @@ void setup() {
     //        delay(100);
     //    }
     //
-    //    Serial.print("WiFi connected\r\nIP address: ");
+    //    Serial.print("WiFiが接続されました。\r\nIP address: ");
     //    Serial.println(WiFi.localIP());
 
     // ----------------------------------------
