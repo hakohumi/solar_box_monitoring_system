@@ -70,22 +70,28 @@ const char *writeKey   = "...writeKey...";  // ライトキー
 void LCDinit() {
     //  wait for VDD gets stable
     delay(40);
+    //  Function set 0x38=B00111001 (normal-mode)
+    LCDsendInst(0x38);
     //  Function set 0x39=B00111001 (extension-mode)
     LCDsendInst(0x39);
     //  Internal OSC 0x14=B00010100 (BS=0, FR=4)
     LCDsendInst(0x14);
-    //  Contrast set 0x72=B01110010 (level=2)
-    LCDsendInst(0x72);
+    //  Contrast set 0x70=B01110000 (level=0)
+    LCDsendInst(0x70);
     //  Power etc    0x56=B01010110 (Boost, const=B10)
     LCDsendInst(0x56);
     //  Follower     0x6c=B01101100 (on, amp=B100)
     LCDsendInst(0x6c);
+
+    delay(200)
+    
     //  Function set 0x38=B00111001 (normal-mode)
     LCDsendInst(0x38);
     //  clear display
     LCDsendInst(0x01);
     //  display on   0x0c=B00001100 (On, no-cursor, no-blink)
     LCDsendInst(0x0c);
+    delay(1)
 }
 
 void LCDsendInst(byte inst) {
@@ -117,9 +123,9 @@ void LCDclear() {
 void LCDlocate(int x, int y) {
     //  カーソルを x 行 y 字目に移動
     if (y == 0) {
-        LCDsendInst(0x80 + x);
+        LCDsendInst(0x00 + x);
     } else {
-        LCDsendInst(0xc0 + x);
+        LCDsendInst(0x40 + x);
     }
 }
 
